@@ -5,21 +5,28 @@ Service Node.js untuk mengirim pesan reset password via WhatsApp menggunakan lib
 ## Requirements
 
 - Node.js 18+ (disarankan 20 LTS)
-- NPM atau Yarn
+- NPM
 - Nomor WhatsApp untuk mengirim pesan
 
-## Quick Start
+---
 
-### 1. Clone Repository
+## 🚀 Quick Start (VPS Baru)
+
+### 1. Update System & Install Node.js
 
 ```bash
-git clone https://github.com/USERNAME/whatsapp-reset-service.git
-cd whatsapp-reset-service
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
 ```
 
-### 2. Install Dependencies
+### 2. Clone Repository
 
 ```bash
+cd ~
+git clone https://github.com/iMazXZ/whatsapp-service.git
+cd whatsapp-service
 npm install
 ```
 
@@ -27,130 +34,73 @@ npm install
 
 ```bash
 cp .env.example .env
-nano .env
+
+# Generate API key
+API_KEY=$(openssl rand -hex 32)
+echo "Your API Key: $API_KEY"
+sed -i "s/your-secret-api-key-here/$API_KEY/" .env
 ```
 
-Isi dengan:
-```env
-PORT=3001
-API_KEY=ganti-dengan-secret-key-aman
-```
-
-Generate API key yang aman:
-```bash
-openssl rand -hex 32
-```
-
-### 4. Buka Port Firewall
+### 4. Buka Firewall
 
 ```bash
+sudo ufw allow 22
 sudo ufw allow 3001
+sudo ufw enable
 ```
 
-### 5. Jalankan Service
+### 5. Jalankan & Scan QR
 
 ```bash
 node index.js
 ```
 
-### 6. Scan QR Code
-
-Setelah service berjalan, akan muncul QR code di terminal.
-
+Scan QR code dengan WhatsApp:
 1. Buka WhatsApp di HP
 2. Menu (⋮) → Linked Devices → Link a Device
-3. Scan QR code
+3. Scan QR code di terminal
 
-### 7. Test API
+### 6. Setup PM2 (Production)
 
-```bash
-# Cek status
-curl http://localhost:3001/status \
-  -H "x-api-key: YOUR_API_KEY"
-
-# Kirim pesan test
-curl -X POST http://localhost:3001/send-message \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{"phone": "08123456789", "message": "Test pesan"}'
-```
-
----
-
-## Production Deployment dengan PM2
-
-### Install PM2
+Setelah QR berhasil di-scan dan muncul "WhatsApp terhubung":
 
 ```bash
-npm install -g pm2
-```
-
-### Jalankan dengan PM2
-
-```bash
+# Stop manual run (Ctrl+C), lalu:
 pm2 start index.js --name whatsapp-service
 pm2 save
 pm2 startup
 ```
 
-### Perintah PM2 Berguna
-
-```bash
-pm2 status              # Lihat status
-pm2 logs whatsapp-service   # Lihat logs
-pm2 restart whatsapp-service  # Restart
-pm2 stop whatsapp-service     # Stop
-```
-
 ---
 
-## API Endpoints
+## 📡 API Endpoints
 
 ### GET /health
-Health check (tanpa autentikasi)
-
-**Response:**
-```json
-{"status": "ok", "timestamp": "2024-01-01T00:00:00.000Z"}
-```
+Health check (tanpa auth)
 
 ### GET /status
 Cek status koneksi WhatsApp
 
-**Headers:** `x-api-key: YOUR_API_KEY`
-
-**Response:**
-```json
-{"connected": true, "message": "WhatsApp terhubung"}
-```
+**Header:** `x-api-key: YOUR_API_KEY`
 
 ### POST /send-reset
 Kirim pesan reset password
 
-**Headers:** 
-- `Content-Type: application/json`
-- `x-api-key: YOUR_API_KEY`
+**Header:** `x-api-key: YOUR_API_KEY`
 
 **Body:**
 ```json
 {
   "phone": "08123456789",
-  "resetUrl": "https://example.com/reset/token123",
-  "userName": "John Doe"
+  "resetUrl": "https://example.com/reset/token",
+  "userName": "Nama User"
 }
-```
-
-**Response:**
-```json
-{"success": true, "message": "Pesan berhasil dikirim"}
 ```
 
 ### POST /send-message
 Kirim pesan custom
 
-**Headers:** 
-- `Content-Type: application/json`
-- `x-api-key: YOUR_API_KEY`
+**Header:** `x-api-key: YOUR_API_KEY`
 
 **Body:**
 ```json
@@ -162,53 +112,56 @@ Kirim pesan custom
 
 ---
 
-## Format Nomor Telepon
+## 🔧 PM2 Commands
 
-Service ini otomatis menormalisasi berbagai format nomor:
+```bash
+pm2 status                    # Lihat status
+pm2 logs whatsapp-service     # Lihat logs
+pm2 restart whatsapp-service  # Restart
+pm2 stop whatsapp-service     # Stop
+```
+
+---
+
+## 📱 Format Nomor Telepon
+
+Otomatis di-normalisasi:
 
 | Input | Hasil |
 |-------|-------|
 | `085712345678` | `6285712345678` |
 | `6285712345678` | `6285712345678` |
 | `+6285712345678` | `6285712345678` |
-| `0857-1234-5678` | `6285712345678` |
 
 ---
 
-## Integrasi dengan Laravel
+## 🔗 Integrasi Laravel
 
 Tambahkan ke `.env` Laravel:
 
 ```env
 WHATSAPP_SERVICE_URL=http://IP_VPS:3001
-WHATSAPP_API_KEY=your-secret-api-key
+WHATSAPP_API_KEY=your-api-key-here
 WHATSAPP_ENABLED=true
 ```
 
 ---
 
-## Troubleshooting
+## ⚠️ Troubleshooting
 
-### QR Code tidak muncul
-- Pastikan folder `auth_info` tidak ada atau kosongkan
-- Restart service
-
-### Koneksi terputus terus
-- Cek koneksi internet VPS
-- Pastikan tidak ada device WhatsApp lain yang logout
-
-### Error "WhatsApp tidak terhubung"
-- Scan ulang QR code
-- Cek apakah nomor WhatsApp di-ban
+| Masalah | Solusi |
+|---------|--------|
+| QR tidak muncul | `rm -rf auth_info` lalu restart |
+| Koneksi terputus terus | Tunggu 10 detik, akan auto-reconnect |
+| Logged out | Hapus `auth_info`, restart, scan QR ulang |
 
 ---
 
-## Security Notes
+## 🔒 Security
 
-⚠️ **PENTING:**
-- Jangan commit folder `auth_info/` ke Git (berisi session WhatsApp)
-- Gunakan API key yang kuat dan simpan dengan aman
-- Batasi akses firewall hanya dari IP Laravel server jika memungkinkan
+- Jangan commit `auth_info/` ke Git
+- Gunakan API key yang kuat
+- Batasi akses firewall jika memungkinkan
 
 ---
 

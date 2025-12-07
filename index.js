@@ -1,4 +1,4 @@
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
@@ -16,54 +16,73 @@ let isConnected = false;
 const authenticate = (req, res, next) => {
     const authHeader = req.headers['x-api-key'];
     if (!authHeader || authHeader !== API_KEY) {
-        return res.status(401).json({
-            success: false,
-            error: 'Unauthorized: Invalid API Key'
-        });
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
     next();
 };
 
 // Fungsi untuk memulai koneksi WhatsApp
 async function startWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+        const { version } = await fetchLatestBaileysVersion();
 
-    sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        logger: pino({ level: 'silent' }),
-        browser: ['WhatsApp Service', 'Chrome', '120.0.0'],
-    });
+        console.log('📱 Menggunakan WA Web version:', version);
 
-    // Handle connection updates
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        sock = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            logger: pino({ level: 'warn' }),
+            browser: ['Lembaga Bahasa', 'Chrome', '120.0.0'],
+            version,
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 30000,
+            emitOwnEvents: false,
+            markOnlineOnConnect: false,
+        });
 
-        if (qr) {
-            console.log('\n========================================');
-            console.log('📱 SCAN QR CODE INI DENGAN WHATSAPP:');
-            console.log('========================================\n');
-            qrcode.generate(qr, { small: true });
-            console.log('\n========================================');
-            console.log('Buka WhatsApp > Menu > Linked Devices > Link a Device');
-            console.log('========================================\n');
-        }
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
 
-        if (connection === 'close') {
-            isConnected = false;
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('❌ Koneksi terputus. Reconnect:', shouldReconnect);
-            if (shouldReconnect) {
-                setTimeout(startWhatsApp, 5000);
+            console.log('📊 Connection update:', connection || 'waiting...');
+
+            if (qr) {
+                console.log('\n========================================');
+                console.log('📱 SCAN QR CODE INI DENGAN WHATSAPP:');
+                console.log('========================================\n');
+                qrcode.generate(qr, { small: true });
+                console.log('\n========================================');
+                console.log('Buka WhatsApp > Menu > Linked Devices > Link a Device');
+                console.log('========================================\n');
             }
-        } else if (connection === 'open') {
-            isConnected = true;
-            console.log('✅ WhatsApp terhubung!');
-        }
-    });
 
-    // Simpan credentials
-    sock.ev.on('creds.update', saveCreds);
+            if (connection === 'close') {
+                isConnected = false;
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+                console.log('❌ Koneksi terputus. Status:', statusCode, 'Reconnect:', shouldReconnect);
+
+                if (shouldReconnect) {
+                    console.log('⏳ Mencoba reconnect dalam 10 detik...');
+                    setTimeout(startWhatsApp, 10000);
+                } else {
+                    console.log('🔴 Logged out. Hapus auth_info dan restart untuk scan QR ulang.');
+                }
+            } else if (connection === 'open') {
+                isConnected = true;
+                console.log('✅ WhatsApp terhubung!');
+            }
+        });
+
+        sock.ev.on('creds.update', saveCreds);
+
+    } catch (error) {
+        console.error('❌ Error starting WhatsApp:', error.message);
+        console.log('⏳ Retry dalam 10 detik...');
+        setTimeout(startWhatsApp, 10000);
+    }
 }
 
 // API Endpoint: Health check (tanpa auth)
@@ -85,28 +104,19 @@ app.post('/send-reset', authenticate, async (req, res) => {
         const { phone, resetUrl, userName } = req.body;
 
         if (!phone || !resetUrl) {
-            return res.status(400).json({
-                success: false,
-                error: 'phone dan resetUrl wajib diisi'
-            });
+            return res.status(400).json({ success: false, error: 'phone dan resetUrl wajib diisi' });
         }
 
         if (!isConnected) {
-            return res.status(503).json({
-                success: false,
-                error: 'WhatsApp tidak terhubung'
-            });
+            return res.status(503).json({ success: false, error: 'WhatsApp tidak terhubung' });
         }
 
         // Normalisasi nomor telepon
         let cleanPhone = phone.replace(/\D/g, '');
-
-        // Jika mulai dengan 0, ganti dengan 62
         if (cleanPhone.startsWith('0')) {
             cleanPhone = '62' + cleanPhone.substring(1);
         }
 
-        // Format ke WhatsApp JID
         const formattedPhone = cleanPhone + '@s.whatsapp.net';
 
         // Pesan reset password
@@ -133,10 +143,7 @@ Lembaga Bahasa UM Metro`;
 
     } catch (error) {
         console.error('❌ Error kirim pesan:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -146,20 +153,13 @@ app.post('/send-message', authenticate, async (req, res) => {
         const { phone, message } = req.body;
 
         if (!phone || !message) {
-            return res.status(400).json({
-                success: false,
-                error: 'phone dan message wajib diisi'
-            });
+            return res.status(400).json({ success: false, error: 'phone dan message wajib diisi' });
         }
 
         if (!isConnected) {
-            return res.status(503).json({
-                success: false,
-                error: 'WhatsApp tidak terhubung'
-            });
+            return res.status(503).json({ success: false, error: 'WhatsApp tidak terhubung' });
         }
 
-        // Normalisasi nomor telepon
         let cleanPhone = phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('0')) {
             cleanPhone = '62' + cleanPhone.substring(1);
@@ -173,10 +173,7 @@ app.post('/send-message', authenticate, async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error kirim pesan:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
