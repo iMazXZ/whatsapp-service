@@ -39,15 +39,23 @@ cp .env.example .env
 API_KEY=$(openssl rand -hex 32)
 echo "Your API Key: $API_KEY"
 sed -i "s/your-secret-api-key-here/$API_KEY/" .env
+
+# Verifikasi
+cat .env
 ```
 
 ### 4. Buka Firewall
 
+**UFW (di VPS):**
 ```bash
 sudo ufw allow 22
 sudo ufw allow 3001
 sudo ufw enable
 ```
+
+**Alibaba Cloud Security Group:**
+- Buka Console → Instance → Security Groups
+- Add Inbound Rule: TCP, Port 3001, Source 0.0.0.0/0
 
 ### 5. Jalankan & Scan QR
 
@@ -62,10 +70,9 @@ Scan QR code dengan WhatsApp:
 
 ### 6. Setup PM2 (Production)
 
-Setelah QR berhasil di-scan dan muncul "WhatsApp terhubung":
+Setelah WhatsApp terhubung, stop dengan Ctrl+C, lalu:
 
 ```bash
-# Stop manual run (Ctrl+C), lalu:
 pm2 start index.js --name whatsapp-service
 pm2 save
 pm2 startup
@@ -75,39 +82,30 @@ pm2 startup
 
 ## 📡 API Endpoints
 
+**Base URL:** `http://IP_VPS:3001`
+
 ### GET /health
 Health check (tanpa auth)
 
 ### GET /status
-Cek status koneksi WhatsApp
-
-**Header:** `x-api-key: YOUR_API_KEY`
+```bash
+curl "http://IP:3001/status" -H "x-api-key: YOUR_KEY"
+```
 
 ### POST /send-reset
-Kirim pesan reset password
-
-**Header:** `x-api-key: YOUR_API_KEY`
-
-**Body:**
-```json
-{
-  "phone": "08123456789",
-  "resetUrl": "https://example.com/reset/token",
-  "userName": "Nama User"
-}
+```bash
+curl -X POST "http://IP:3001/send-reset" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_KEY" \
+  -d '{"phone":"08123456789","resetUrl":"https://...","userName":"Nama"}'
 ```
 
 ### POST /send-message
-Kirim pesan custom
-
-**Header:** `x-api-key: YOUR_API_KEY`
-
-**Body:**
-```json
-{
-  "phone": "08123456789",
-  "message": "Isi pesan"
-}
+```bash
+curl -X POST "http://IP:3001/send-message" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_KEY" \
+  -d '{"phone":"08123456789","message":"Test"}'
 ```
 
 ---
@@ -123,25 +121,17 @@ pm2 stop whatsapp-service     # Stop
 
 ---
 
-## 📱 Format Nomor Telepon
+## 📱 Format Nomor
 
-Otomatis di-normalisasi:
-
-| Input | Hasil |
-|-------|-------|
-| `085712345678` | `6285712345678` |
-| `6285712345678` | `6285712345678` |
-| `+6285712345678` | `6285712345678` |
+Otomatis di-normalisasi: `085xxx` → `6285xxx`
 
 ---
 
 ## 🔗 Integrasi Laravel
 
-Tambahkan ke `.env` Laravel:
-
 ```env
 WHATSAPP_SERVICE_URL=http://IP_VPS:3001
-WHATSAPP_API_KEY=your-api-key-here
+WHATSAPP_API_KEY=your-api-key
 WHATSAPP_ENABLED=true
 ```
 
@@ -151,17 +141,10 @@ WHATSAPP_ENABLED=true
 
 | Masalah | Solusi |
 |---------|--------|
-| QR tidak muncul | `rm -rf auth_info` lalu restart |
-| Koneksi terputus terus | Tunggu 10 detik, akan auto-reconnect |
-| Logged out | Hapus `auth_info`, restart, scan QR ulang |
-
----
-
-## 🔒 Security
-
-- Jangan commit `auth_info/` ke Git
-- Gunakan API key yang kuat
-- Batasi akses firewall jika memungkinkan
+| QR tidak muncul | `rm -rf auth_info && node index.js` |
+| Koneksi terputus | Tunggu auto-reconnect 10 detik |
+| Logged out | Hapus `auth_info`, restart, scan ulang |
+| API Unauthorized | Cek API key di `.env`, restart PM2 |
 
 ---
 
