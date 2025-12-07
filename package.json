@@ -1,0 +1,26 @@
+{
+    "name": "whatsapp-reset-service",
+    "version": "1.0.0",
+    "description": "WhatsApp service untuk reset password Lembaga Bahasa UM Metro",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node index.js"
+    },
+    "keywords": [
+        "whatsapp",
+        "baileys",
+        "reset-password"
+    ],
+    "author": "Lembaga Bahasa UM Metro",
+    "license": "MIT",
+    "dependencies": {
+        "@whiskeysockets/baileys": "^6.7.16",
+        "express": "^4.21.2",
+        "pino": "^9.6.0",
+        "qrcode-terminal": "^0.12.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
