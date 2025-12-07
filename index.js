@@ -216,55 +216,49 @@ app.post('/send-notification', authenticate, async (req, res) => {
         let message = '';
 
         if (type === 'ept_status') {
-            const statusEmoji = status === 'approved' ? '✅' : status === 'rejected' ? '❌' : '⏳';
             const statusText = status === 'approved' ? 'DISETUJUI' : status === 'rejected' ? 'DITOLAK' : 'MENUNGGU TINJAUAN';
 
-            message = `📄 *Status Surat Rekomendasi EPT*
-━━━━━━━━━━━━━━━━━━━━━
+            message = `*SURAT REKOMENDASI EPT*
 
-Yth. ${userName || 'Bapak/Ibu'},
+Yth. ${userName || 'Pemohon'},
 
-Status pengajuan Surat Rekomendasi EPT Anda:
-${statusEmoji} *${statusText}*
+Melalui pesan ini kami informasikan status pengajuan Surat Rekomendasi EPT Anda:
+Status: *${statusText}*
 
 ${details || ''}
 
-${actionUrl ? `📱 Buka Dashboard:\n${actionUrl}` : ''}
+${actionUrl ? `Silakan login ke dashboard untuk informasi lebih lanjut:\n${actionUrl}` : ''}
 
 Hormat kami,
-*Admin Lembaga Bahasa UM Metro*`;
+*Lembaga Bahasa UM Metro*`;
 
         } else if (type === 'penerjemahan_status') {
-            let statusEmoji = '📌';
-            if (status === 'Selesai') statusEmoji = '✅';
-            else if (status.includes('Ditolak')) statusEmoji = '❌';
-            else if (status === 'Diproses') statusEmoji = '⏳';
+            message = `*PENERJEMAHAN DOKUMEN*
 
-            message = `📝 *Status Penerjemahan Dokumen*
-━━━━━━━━━━━━━━━━━━━━━
+Yth. ${userName || 'Pemohon'},
 
-Halo ${userName || 'Bapak/Ibu'},
-
-Status Penerjemahan Dokumen Abstrak Anda:
-${statusEmoji} *${status}*
+Informasi status Penerjemahan Dokumen Abstrak Anda:
+Status: *${status}*
 
 ${details || ''}
 
-${actionUrl ? `📱 Buka Dashboard:\n${actionUrl}` : ''}
+${actionUrl ? `Silakan login ke dashboard untuk informasi lebih lanjut:\n${actionUrl}` : ''}
 
-Regards,
-*Admin Lembaga Bahasa*`;
+Hormat kami,
+*Lembaga Bahasa UM Metro*`;
 
         } else {
             // Generic notification
-            message = `📢 *Notifikasi*
-━━━━━━━━━━━━━━━━━━━━━
+            message = `*NOTIFIKASI SISTEM*
 
-Halo ${userName || 'Bapak/Ibu'},
+Yth. ${userName || 'Pengguna'},
 
 ${details || status}
 
-${actionUrl ? `📱 Selengkapnya:\n${actionUrl}` : ''}`;
+${actionUrl ? `Link:\n${actionUrl}` : ''}
+
+Hormat kami,
+*Lembaga Bahasa UM Metro*`;
         }
 
         await sock.sendMessage(formattedPhone, { text: message });
