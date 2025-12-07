@@ -138,6 +138,22 @@ pm2 restart whatsapp-service  # Restart
 
 ---
 
+## 📱 Ganti Nomor WhatsApp
+
+Untuk logout dan scan QR dengan nomor WA baru:
+
+```bash
+pm2 stop whatsapp-service
+rm -rf ~/whatsapp-service/auth_info
+cd ~/whatsapp-service
+node index.js
+# Scan QR baru, tunggu "WhatsApp terhubung!"
+# Ctrl+C, lalu:
+pm2 start whatsapp-service
+```
+
+---
+
 ## ⚠️ Troubleshooting
 
 | Masalah | Solusi |

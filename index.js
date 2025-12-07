@@ -148,6 +148,49 @@ Lembaga Bahasa UM Metro`;
     }
 });
 
+// API Endpoint: Kirim OTP verifikasi nomor
+app.post('/send-otp', authenticate, async (req, res) => {
+    try {
+        const { phone, otp, appName } = req.body;
+
+        if (!phone || !otp) {
+            return res.status(400).json({ success: false, error: 'phone dan otp wajib diisi' });
+        }
+
+        if (!isConnected) {
+            return res.status(503).json({ success: false, error: 'WhatsApp tidak terhubung' });
+        }
+
+        // Normalisasi nomor telepon
+        let cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        }
+
+        const formattedPhone = cleanPhone + '@s.whatsapp.net';
+
+        // Pesan OTP
+        const message = `🔐 *Kode Verifikasi ${appName || 'Lembaga Bahasa'}*
+
+Kode OTP Anda adalah:
+
+*${otp}*
+
+⏰ Kode ini berlaku selama 5 menit.
+
+⚠️ Jangan bagikan kode ini kepada siapapun.`;
+
+        await sock.sendMessage(formattedPhone, { text: message });
+
+        console.log(`✅ OTP terkirim ke ${cleanPhone}`);
+        res.json({ success: true, message: 'OTP berhasil dikirim' });
+
+    } catch (error) {
+        console.error('❌ Error kirim OTP:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // API Endpoint: Kirim pesan custom (untuk testing)
 app.post('/send-message', authenticate, async (req, res) => {
     try {
