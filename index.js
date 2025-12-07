@@ -232,7 +232,12 @@ ${actionUrl ? `Silakan login ke dashboard untuk informasi lebih lanjut:\n${actio
 Hormat kami,
 *Lembaga Bahasa UM Metro*`;
 
-        } else if (type === 'penerjemahan_status') {
+
+            let actionText = 'Silakan login ke dashboard untuk informasi lebih lanjut';
+            if (status === 'Selesai') {
+                actionText = 'Download hasil terjemahan di link di bawah ini';
+            }
+
             message = `*PENERJEMAHAN DOKUMEN*
 
 Yth. ${userName || 'Pemohon'},
@@ -242,7 +247,7 @@ Status: *${status}*
 
 ${details || ''}
 
-${actionUrl ? `Silakan login ke dashboard untuk informasi lebih lanjut:\n${actionUrl}` : ''}
+${actionUrl ? `${actionText}:\n${actionUrl}` : ''}
 
 Hormat kami,
 *Lembaga Bahasa UM Metro*`;
