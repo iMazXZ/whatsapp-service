@@ -191,6 +191,93 @@ Kode OTP Anda adalah:
     }
 });
 
+// API Endpoint: Kirim notifikasi status (EPT, Penerjemahan, dll)
+app.post('/send-notification', authenticate, async (req, res) => {
+    try {
+        const { phone, type, userName, status, details, actionUrl } = req.body;
+
+        if (!phone || !type || !status) {
+            return res.status(400).json({ success: false, error: 'phone, type, dan status wajib diisi' });
+        }
+
+        if (!isConnected) {
+            return res.status(503).json({ success: false, error: 'WhatsApp tidak terhubung' });
+        }
+
+        // Normalisasi nomor telepon
+        let cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        }
+
+        const formattedPhone = cleanPhone + '@s.whatsapp.net';
+
+        // Generate message based on type
+        let message = '';
+
+        if (type === 'ept_status') {
+            const statusEmoji = status === 'approved' ? '✅' : status === 'rejected' ? '❌' : '⏳';
+            const statusText = status === 'approved' ? 'DISETUJUI' : status === 'rejected' ? 'DITOLAK' : 'MENUNGGU TINJAUAN';
+
+            message = `📄 *Status Surat Rekomendasi EPT*
+━━━━━━━━━━━━━━━━━━━━━
+
+Yth. ${userName || 'Bapak/Ibu'},
+
+Status pengajuan Surat Rekomendasi EPT Anda:
+${statusEmoji} *${statusText}*
+
+${details || ''}
+
+${actionUrl ? `📱 Buka Dashboard:\n${actionUrl}` : ''}
+
+Hormat kami,
+*Admin Lembaga Bahasa UM Metro*`;
+
+        } else if (type === 'penerjemahan_status') {
+            let statusEmoji = '📌';
+            if (status === 'Selesai') statusEmoji = '✅';
+            else if (status.includes('Ditolak')) statusEmoji = '❌';
+            else if (status === 'Diproses') statusEmoji = '⏳';
+
+            message = `📝 *Status Penerjemahan Dokumen*
+━━━━━━━━━━━━━━━━━━━━━
+
+Halo ${userName || 'Bapak/Ibu'},
+
+Status Penerjemahan Dokumen Abstrak Anda:
+${statusEmoji} *${status}*
+
+${details || ''}
+
+${actionUrl ? `📱 Buka Dashboard:\n${actionUrl}` : ''}
+
+Regards,
+*Admin Lembaga Bahasa*`;
+
+        } else {
+            // Generic notification
+            message = `📢 *Notifikasi*
+━━━━━━━━━━━━━━━━━━━━━
+
+Halo ${userName || 'Bapak/Ibu'},
+
+${details || status}
+
+${actionUrl ? `📱 Selengkapnya:\n${actionUrl}` : ''}`;
+        }
+
+        await sock.sendMessage(formattedPhone, { text: message });
+
+        console.log(`✅ Notifikasi ${type} terkirim ke ${cleanPhone}`);
+        res.json({ success: true, message: 'Notifikasi berhasil dikirim' });
+
+    } catch (error) {
+        console.error('❌ Error kirim notifikasi:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // API Endpoint: Kirim pesan custom (untuk testing)
 app.post('/send-message', authenticate, async (req, res) => {
     try {
