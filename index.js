@@ -299,6 +299,16 @@ app.post('/send-message', authenticate, async (req, res) => {
     }
 });
 
+// Health Check Endpoint (untuk UptimeRobot - tanpa auth)
+app.get('/status', (req, res) => {
+    res.json({
+        status: isConnected ? 'connected' : 'disconnected',
+        service: 'WhatsApp API',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 WhatsApp Service berjalan di port ${PORT}`);
