@@ -169,16 +169,8 @@ app.post('/send-otp', authenticate, async (req, res) => {
 
         const formattedPhone = cleanPhone + '@s.whatsapp.net';
 
-        // Pesan OTP
-        const message = `🔐 *Kode Verifikasi ${appName || 'Lembaga Bahasa'}*
-
-Kode OTP Anda adalah:
-
-*${otp}*
-
-⏰ Kode ini berlaku selama 5 menit.
-
-⚠️ Jangan bagikan kode ini kepada siapapun.`;
+        // Pesan OTP - format singkat agar memunculkan tombol "Salin kode"
+        const message = `${otp} adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini.`;
 
         await sock.sendMessage(formattedPhone, { text: message });
 
