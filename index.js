@@ -91,8 +91,8 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Endpoint: Cek status koneksi
-app.get('/status', authenticate, (req, res) => {
+// API Endpoint: Cek status koneksi (protected)
+app.get('/connection-status', authenticate, (req, res) => {
     res.json({
         connected: isConnected,
         message: isConnected ? 'WhatsApp terhubung' : 'WhatsApp tidak terhubung'
