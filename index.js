@@ -170,7 +170,7 @@ app.post('/send-otp', authenticate, async (req, res) => {
         const formattedPhone = cleanPhone + '@s.whatsapp.net';
 
         // Pesan OTP - format singkat agar memunculkan tombol "Salin kode"
-        const message = `${otp} adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini.`;
+        const message = `*${otp}* adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini.`;
 
         await sock.sendMessage(formattedPhone, { text: message });
 
