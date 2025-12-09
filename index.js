@@ -12,6 +12,13 @@ const API_KEY = process.env.API_KEY || 'your-secret-api-key-here';
 
 let sock = null;
 let isConnected = false;
+let connectionState = {
+    status: 'initializing',
+    reason: null,
+    message: 'Service starting...',
+    lastUpdate: new Date().toISOString(),
+    qrPending: false
+};
 
 // Middleware: API Key Authentication
 const authenticate = (req, res, next) => {
@@ -56,6 +63,14 @@ async function startWhatsApp() {
                 console.log('\n========================================');
                 console.log('Buka WhatsApp > Menu > Linked Devices > Link a Device');
                 console.log('========================================\n');
+
+                connectionState = {
+                    status: 'waiting_qr',
+                    reason: 'qr_pending',
+                    message: 'Menunggu scan QR Code di WhatsApp',
+                    lastUpdate: new Date().toISOString(),
+                    qrPending: true
+                };
             }
 
             if (connection === 'close') {
@@ -67,13 +82,34 @@ async function startWhatsApp() {
 
                 if (shouldReconnect) {
                     console.log('⏳ Mencoba reconnect dalam 10 detik...');
+                    connectionState = {
+                        status: 'reconnecting',
+                        reason: `status_${statusCode}`,
+                        message: 'Koneksi terputus, mencoba reconnect...',
+                        lastUpdate: new Date().toISOString(),
+                        qrPending: false
+                    };
                     setTimeout(startWhatsApp, 10000);
                 } else {
                     console.log('🔴 Logged out. Hapus auth_info dan restart untuk scan QR ulang.');
+                    connectionState = {
+                        status: 'logged_out',
+                        reason: 'device_removed',
+                        message: 'Logged out. Hapus auth_info dan restart untuk scan QR ulang.',
+                        lastUpdate: new Date().toISOString(),
+                        qrPending: false
+                    };
                 }
             } else if (connection === 'open') {
                 isConnected = true;
                 console.log('✅ WhatsApp terhubung!');
+                connectionState = {
+                    status: 'connected',
+                    reason: null,
+                    message: 'WhatsApp terhubung dan siap digunakan',
+                    lastUpdate: new Date().toISOString(),
+                    qrPending: false
+                };
             }
         });
 
@@ -302,12 +338,22 @@ app.post('/send-message', authenticate, async (req, res) => {
 // Health Check Endpoint (untuk UptimeRobot - tanpa auth)
 app.get('/status', (req, res) => {
     res.json({
-        status: isConnected ? 'connected' : 'disconnected',
-        service: 'WhatsApp API',
-        uptime: process.uptime(),
+        ...connectionState,
+        service: 'Lembaga Bahasa WhatsApp API',
+        uptime: Math.floor(process.uptime()),
+        uptimeFormatted: formatUptime(process.uptime()),
         timestamp: new Date().toISOString()
     });
 });
+
+// Helper: format uptime
+function formatUptime(seconds) {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return `${d}d ${h}h ${m}m ${s}s`;
+}
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
