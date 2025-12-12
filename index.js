@@ -24,11 +24,18 @@ let connectionState = {
 let messageLogs = [];
 const MAX_LOGS = 20;
 
+// Helper: mask phone number (62822****1724)
+function maskPhone(phone) {
+    const clean = phone.replace(/@s\.whatsapp\.net$/, '');
+    if (clean.length <= 8) return clean;
+    return clean.substring(0, 5) + '****' + clean.substring(clean.length - 4);
+}
+
 function addLog(type, phone, status, error = null) {
     const log = {
         id: Date.now(),
         type,
-        phone: phone.replace(/@s\.whatsapp\.net$/, ''),
+        phone: maskPhone(phone),
         status,
         error,
         timestamp: new Date().toISOString()
