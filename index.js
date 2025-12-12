@@ -20,6 +20,25 @@ let connectionState = {
     qrPending: false
 };
 
+// Message logs - simpan 20 pesan terakhir
+let messageLogs = [];
+const MAX_LOGS = 20;
+
+function addLog(type, phone, status, error = null) {
+    const log = {
+        id: Date.now(),
+        type,
+        phone: phone.replace(/@s\.whatsapp\.net$/, ''),
+        status,
+        error,
+        timestamp: new Date().toISOString()
+    };
+    messageLogs.unshift(log); // Tambah di awal
+    if (messageLogs.length > MAX_LOGS) {
+        messageLogs.pop(); // Hapus yang terakhir jika lebih dari MAX_LOGS
+    }
+}
+
 // Middleware: API Key Authentication
 const authenticate = (req, res, next) => {
     const authHeader = req.headers['x-api-key'];
@@ -174,11 +193,13 @@ Terima kasih,
 Lembaga Bahasa UM Metro`;
 
         await sock.sendMessage(formattedPhone, { text: message });
+        addLog('reset_password', formattedPhone, 'success');
 
         console.log(`✅ Pesan reset terkirim ke ${cleanPhone}`);
         res.json({ success: true, message: 'Pesan berhasil dikirim' });
 
     } catch (error) {
+        addLog('reset_password', req.body.phone || 'unknown', 'failed', error.message);
         console.error('❌ Error kirim pesan:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -209,11 +230,13 @@ app.post('/send-otp', authenticate, async (req, res) => {
         const message = `*${otp}* adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini.`;
 
         await sock.sendMessage(formattedPhone, { text: message });
+        addLog('otp', formattedPhone, 'success');
 
         console.log(`✅ OTP terkirim ke ${cleanPhone}`);
         res.json({ success: true, message: 'OTP berhasil dikirim' });
 
     } catch (error) {
+        addLog('otp', req.body.phone || 'unknown', 'failed', error.message);
         console.error('❌ Error kirim OTP:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -295,11 +318,13 @@ Hormat kami,
         }
 
         await sock.sendMessage(formattedPhone, { text: message });
+        addLog(type, formattedPhone, 'success');
 
         console.log(`✅ Notifikasi ${type} terkirim ke ${cleanPhone}`);
         res.json({ success: true, message: 'Notifikasi berhasil dikirim' });
 
     } catch (error) {
+        addLog(req.body.type || 'notification', req.body.phone || 'unknown', 'failed', error.message);
         console.error('❌ Error kirim notifikasi:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -325,11 +350,13 @@ app.post('/send-message', authenticate, async (req, res) => {
 
         const formattedPhone = cleanPhone + '@s.whatsapp.net';
         await sock.sendMessage(formattedPhone, { text: message });
+        addLog('custom', formattedPhone, 'success');
 
         console.log(`✅ Pesan terkirim ke ${cleanPhone}`);
         res.json({ success: true, message: 'Pesan berhasil dikirim' });
 
     } catch (error) {
+        addLog('custom', req.body.phone || 'unknown', 'failed', error.message);
         console.error('❌ Error kirim pesan:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -342,6 +369,15 @@ app.get('/status', (req, res) => {
         service: 'Lembaga Bahasa WhatsApp API',
         uptime: Math.floor(process.uptime()),
         uptimeFormatted: formatUptime(process.uptime()),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Logs Endpoint - tampilkan 20 pesan terakhir (tanpa auth untuk dashboard)
+app.get('/logs', (req, res) => {
+    res.json({
+        logs: messageLogs,
+        total: messageLogs.length,
         timestamp: new Date().toISOString()
     });
 });
